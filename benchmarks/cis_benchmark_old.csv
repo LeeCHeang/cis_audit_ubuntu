@@ -1,0 +1,21 @@
+ID,Title,Check_Type,Target,Parameters,Algorithm,Expected_Value
+1.1.1.1,Ensure cramfs is not available,kernel_module_status,cramfs,,Exact,not_available
+1.1.1.2,Ensure freevxfs kernel module is not available,execute_script,ensure_kernel_module_is_not_available.sh,"[""freevxfs""]",Contain,PASS
+1.1.1.3,Ensure hfs kernel module is not available,execute_script,ensure_kernel_module_is_not_available.sh,"[""hfs""]",Contain,PASS
+1.1.2.1.1,Ensure /tmp is a separate partition,mount_point,/tmp,,Contain,"rw,nosuid,nodev,noexec"
+1.1.2.2.1,Ensure /dev/shm is a separate partition,mount_point,/dev/shm,,Exact,"/dev/shm tmpfs tmpfs rw,nosuid,nodev,noexec,relatime,seclabel"
+1.3.1.1,Ensure latest versions of the apparmor packages are installed,package_status,apparmor,,Exact,installed
+1.5.1,Ensure address space layout randomization is enabled,execute_script,kernel_config_parameter.sh,"[""kernel.randomize_va_space=2""]",Contain,PASS
+1.5.2,Ensure ptrace_scope is restricted,execute_script,kernel_config_parameter.sh,"[""kernel.yama.ptrace_scope=(1|2|3)""]",Contain,PASS
+1.5.3,Ensure core dumps are restricted,command_output,"grep -Ps -- '^\h*\*\h+hard\h+core\h+0\b' /etc/security/limits.conf /etc/security/limits.d/*","{'allow_error_exit': [1, 2]}",Exact,"* hard core 0"
+6.2.8,Ensure no users have .forward files,command_output,find /home -name .forward,{},Null,
+1.8,Ensure prelink is not installed,package_status,prelink,{},Exact,"not_installed"
+5.2.4,Ensure SSH PermitRootLogin is set to no,command_output,"grep -r ""^[^#].*NOPASSWD"" /etc/sudoers*","{}",Null,"no"
+1.1.1.1,Ensure cramfs is not available,kernel_module_status,cramfs,{},Exact,"not_available"
+5.3.2,Ensure telnet server is not running,command_output,"ps -ef | grep -v grep | grep telnetd",{},Null,
+5.4.1.1,Pwd Quality - Min Len,config_file_value,/etc/security/pwquality.conf,{'key': 'minlen'},More Than,"13"
+5.3.1,Pwd Hashing Algorithm,config_file_value,"/etc/login.defs","{'key': 'ENCRYPT_METHOD'}",Exact,"yescrypt"
+5.6,Check for legacy '+' entries,command_output,grep '^\+:' /etc/passwd,,Null,
+4.2.1.3,Ensure rsyslog is sending logs,command_output,"grep -E '^\s*[^#]+\s+@' /etc/rsyslog.conf",,Not Null,
+1.1.3.2,Ensure AppArmor is enabled in bootloader,multi_procedure,N/A,"{'steps': [{'name': 'Verify apparmor=1 is set', 'command': 'grep \""^\\s*linux\"" /boot/grub/grub.cfg | grep -v \""apparmor=1\""', 'algorithm': 'Not Null'}, {'name': 'Verify security=apparmor is set', 'command': 'grep \""^\\s*linux\"" /boot/grub/grub.cfg | grep -v \""security=apparmor\""', 'algorithm': 'Not Null'}]}",Contain,Overall Result: PASS
+1.9,Ensure security updates are applied,multi_procedure,N/A,"{'steps': [{'name': 'Ensure unattended-upgrades package is installed', 'type': 'script', 'target_script': 'check_package.sh', 'script_params': ['unattended-upgrades', 'installed'], 'algorithm': 'Contain', 'expected_value': 'Passed'}, {'name': 'Check for system boot time', 'type': 'command', 'command': 'who -b', 'algorithm': 'Null', 'expected_value': ''}]}",Contain,Overall Result: PASS

@@ -1,0 +1,8 @@
+ID,Level,Profile,Domain,Title,Check_Type,Target,Parameters,Algorithm,Expected_Value
+1.1.1.1,L1,"S,W",Initial Setup,Ensure cramfs is not available,kernel_module_status,cramfs,{},Exact,not_available
+2.1.1,L1,"S",Services,Ensure time synchronization is in use,package_status,chrony,{"state":"installed"},Exact,installed
+2.1.2,L1,"W",Services,Ensure GUI is not installed,package_status,ubuntu-desktop,{"state":"not_installed"},Exact,not_installed
+5.2.4,L1,"S,W",Access,Ensure SSH PermitRootLogin is no,config_file_value,/etc/ssh/sshd_config,"{'key': 'PermitRootLogin'}",Exact,no
+4.2.1.3,L1,"S,W",test,Ensure rsyslog is sending logs,command_output,"grep -E '^\s*[^#]+\s+@' /etc/rsyslog.conf",,Not Null,
+1.1.3.2,L1,"S,W",test,Ensure AppArmor is enabled in bootloader,multi_procedure,N/A,"{'steps': [{'name': 'Verify apparmor=1 is set', 'command': 'grep \""^\\s*linux\"" /boot/grub/grub.cfg | grep -v \""apparmor=1\""', 'algorithm': 'Not Null'}, {'name': 'Verify security=apparmor is set', 'command': 'grep \""^\\s*linux\"" /boot/grub/grub.cfg | grep -v \""security=apparmor\""', 'algorithm': 'Not Null'}]}",Contain,Overall Result: PASS
+1.9,L1,"S,W",test,Ensure security updates are applied,multi_procedure,N/A,"{'steps': [{'name': 'Ensure unattended-upgrades package is installed', 'type': 'script', 'target_script': 'check_package.sh', 'script_params': ['unattended-upgrades', 'installed'], 'algorithm': 'Contain', 'expected_value': 'Passed'}, {'name': 'Check for system boot time', 'type': 'command', 'command': 'who -b', 'algorithm': 'Null', 'expected_value': ''}]}",Contain,Overall Result: PASS

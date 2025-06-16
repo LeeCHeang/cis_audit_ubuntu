@@ -1,0 +1,9 @@
+ID,Title,Check_Type,Target,Parameters,Algorithm,Expected_Value
+1.8,Ensure prelink is not installed,package_status,prelink,{},Exact,"not_installed"
+5.2.4,Ensure SSH PermitRootLogin is set to no,command_output,"grep -r ""^[^#].*NOPASSWD"" /etc/sudoers*","{}",Null,"no"
+1.1.1.1,Ensure cramfs is not available,kernel_module_status,cramfs,{},Exact,"not_available"
+5.3.2,Ensure telnet server is not running,command_output,"ps -ef | grep -v grep | grep telnetd",{},Null,
+5.4.1.1,Pwd Quality - Min Len,config_file_value,/etc/security/pwquality.conf,{'key': 'minlen'},More Than,"13"
+5.3.1,Pwd Hashing Algorithm,config_file_value,"/etc/login.defs","{'key': 'ENCRYPT_METHOD'}",Exact,"yescrypt"
+5.6,Check for legacy '+' entries,command_output,grep '^\+:' /etc/passwd,,Null,
+4.2.1.3,Ensure rsyslog is sending logs,command_output,"grep -E '^\s*[^#]+\s+@' /etc/rsyslog.conf",,Not Null,

@@ -1,0 +1,2 @@
+ID,Level,Profile,Domain,Title,Check_Type,Target,Parameters,Algorithm,Expected_Value
+1.1.2.1.2,L2,"Server, Workstation",Initail Setup,Ensure nodev option set on /tmp partition,command_output,findmnt -kn /tmp | grep -v nodev,,Null,
