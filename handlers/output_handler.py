@@ -16,7 +16,7 @@ def _get_common_data(task: AuditTask):
     exit_code = output_dict.get("exit_code", -1)
     # Get the expected success code from params, defaulting to 0.
     expected_exit_code = int(task.parameters.get("success_code", 0))
-    expected_conditions = [cond.strip() for cond in task.expected_value.split(',')] 
+    expected_conditions = [cond.strip() for cond in task.expected_value.split(';')] 
     return stdout, exit_code, expected_exit_code, expected_conditions
 
 @singledispatch

@@ -20,7 +20,12 @@ def handle(target: str, params: dict) -> str:
         #     return "is_not_separate_partition"
         
         # Return all the output and Will you contain Algorithm
-        return result.stdout.strip()
+        # return result.stdout.strip()
+        return {
+            'strdout': result.stdout.strip(),
+            'strderr': result.stderr.strip(),
+            'exit_code': result.returncode 
+        }
             
     except FileNotFoundError:
         return "ERROR: 'findmnt' command not found."
