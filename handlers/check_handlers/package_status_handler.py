@@ -4,6 +4,12 @@ import subprocess
 
 # @debug_wrapper # <-- Apply the decorator to the handle function
 def handle(target: str, params: dict) -> str:
+    if not target:
+        return {
+            "stdout": '',
+            "stderr": 'Error Not Package Have input',
+            "exit_code": 1
+        }
     try:
         result = subprocess.run(['dpkg-query', '-s', target], capture_output=True, text=True)
         # return "installed" if result.returncode == 0 else "not_installed"

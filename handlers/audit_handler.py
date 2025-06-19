@@ -56,9 +56,10 @@ class AuditHandler:
             except ImportError:
                 task.final_result = "ERROR"
                 task.actual_output = f"Check handler module not found: '{handler_module_name}.py'. Please create this file."
-            except AttributeError:
+            except AttributeError as e:
                 task.final_result = "ERROR"
-                task.actual_output = f"Handler module '{handler_module_name}.py' must contain a 'handle' function."
+                # task.actual_output = f"Handler module '{handler_module_name}.py' must contain a 'handle' function."
+                task.actual_output = f"Something went wrong with Attribute: {e}"
             except Exception as e:
                 task.final_result = "ERROR"
                 task.actual_output = f"An unexpected error occurred in handler '{task.check_type}': {e}"

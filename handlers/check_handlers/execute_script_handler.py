@@ -9,24 +9,22 @@ from typing import List, Tuple
 # path, name = get_script_path_and_name("ensure_kernel_module_is_not_available.sh")
 # print("Absolute path:", path)
 # print("Script name:", name)
-# from utils.decorators import debug_wrapper # <-- Import our new decorator
+from utils.decorators import debug_wrapper # <-- Import our new decorator
 
-# @debug_wrapper # <-- Apply the decorator to the handle function
+@debug_wrapper # <-- Apply the decorator to the handle function
 def handle(script_name: str, params: List[str]) -> Tuple[str, str, int]:
-    """
-    Executes a shell script and captures its output.
-    Returns: (stdout, stderr, returncode)
-    """
     if not script_name:
         return ("", "ERROR: No script name provided.", 1)
 
     script_path = os.path.abspath(f"functions/{script_name}")
+    if not isinstance(params, list):
+        params = []  # Default to an empty list if params is not a list
+
+    script_name = ['bash', script_path] + params
     
-    
-    command = ['bash', script_path] + params
     try:
         result = subprocess.run(
-            command, 
+            script_name, 
             capture_output=True, 
             text=True, 
             check=False # Do not raise exception on non-zero exit
@@ -38,13 +36,18 @@ def handle(script_name: str, params: List[str]) -> Tuple[str, str, int]:
         
         # # Return stdout, or indicate empty output
         # return result.stdout.strip() if result.stdout.strip() else "No output"
-        if result.returncode != 0:
-            # If the script failed, return a formatted error with its output
-            error_details = result.stderr.strip() if result.stderr.strip() else result.stdout.strip()
-            return f"ERROR: Script '{script_name}' exited with code {result.returncode}. Details: {error_details}"
+        # if result.returncode != 0:
+        #     # If the script failed, return a formatted error with its output
+        #     error_details = result.stderr.strip() if result.stderr.strip() else result.stdout.strip()
+        #     return f"ERROR: Script '{script_name}' exited with code {result.returncode}. Details: {error_details}"
         
         # If the script succeeded, return its standard output
-        return result.stdout.strip()
+        # return result.stdout.strip()
+        return {
+            'stdout': result.stdout.strip(),
+            'stderr': result.stderr.strip(),
+            'exit_code': result.returncode
+        }
 
     except FileNotFoundError:
         return ("", f"ERROR: 'bash' or script '{script_path}' not found.", 1)

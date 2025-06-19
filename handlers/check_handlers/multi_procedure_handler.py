@@ -19,20 +19,20 @@ def handle(target: str, params: dict) -> List[Dict]:
             if step_type == 'command':
                 command = step.get('command')
                 proc = subprocess.run(command, shell=True, capture_output=True, text=True, check=False)
-                if proc.returncode != 0:
-                    # step_output = f"ERROR: Command exited with code {proc.returncode}. Details: {proc.stderr.strip()}"
-                    step_output = {
-                        "stdout": proc.stdout.strip(),
-                        "stderr": proc.stderr.strip(),
-                        "exit_code": proc.returncode
-                    }
-                else:
-                    # step_output = proc.stdout.strip() if proc.stdout.strip() else "__EMPTY_OUTPUT__"
-                    step_output = {
-                        "stdout": proc.stdout.strip(),
-                        "stderr": proc.stderr.strip(),
-                        "exit_code": proc.returncode
-                    }
+                # if proc.returncode != 0:
+                #     # step_output = f"ERROR: Command exited with code {proc.returncode}. Details: {proc.stderr.strip()}"
+                step_output = {
+                    "stdout": proc.stdout.strip(),
+                    "stderr": proc.stderr.strip(),
+                    "exit_code": proc.returncode
+                }
+            # else:
+                #     # step_output = proc.stdout.strip() if proc.stdout.strip() else "__EMPTY_OUTPUT__"
+                #     step_output = {
+                #         "stdout": proc.stdout.strip(),
+                #         "stderr": proc.stderr.strip(),
+                #         "exit_code": proc.returncode
+                #     }
             
             # Case 2: Execute a script from the functions/ directory
             elif step_type == 'script':

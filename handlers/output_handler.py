@@ -42,6 +42,7 @@ def algorithm_not_null(task: AuditTask) -> bool:
 def _(actual: str, expected: str = '' ) -> bool:
     return bool(actual)
 
+@singledispatch
 def algorithm_exact(task: AuditTask) -> bool:
     """Passes if the command exits with the expected success code and output matches exactly."""
     stdout, exit_code, expected_exit_code, expected_conditions = _get_common_data(task)
@@ -52,6 +53,10 @@ def algorithm_exact(task: AuditTask) -> bool:
     #         break
     # return exit_code == expected_exit_code and expected
     return exit_code == expected_exit_code and any(condition.lower() == stdout.lower() for condition in expected_conditions)
+
+@algorithm_exact.register
+def _(actual: str, expected: str) -> bool:
+    return actual.lower() == expected.lower()
 
 @singledispatch
 def algorithm_contain(task: AuditTask) -> bool:
@@ -68,13 +73,23 @@ def algorithm_contain(task: AuditTask) -> bool:
 @algorithm_contain.register
 def _(actual: str, expected: str) -> bool:
 #     # return print(f"Checking if '{Colors.FAIL}{expected}{Colors.ENDC}' is in '{Colors.OKGREEN}{actual}{Colors.ENDC}'")
-    return expected.lower() in actual.lower()
+    expected_conditions = [cond.strip() for cond in expected.split(';')] 
 
+    # return expected.lower() in actual.lower()
+    return any(condition.lower() in actual.lower() for condition in expected_conditions)
 
+@singledispatch
+def algorithm_does_not_contain(task: AuditTask) -> bool:
+    """Passes if the command exits with the expected success code and output contains a substring."""
+    stdout, exit_code, expected_exit_code, expected_conditions= _get_common_data(task)
+    # return exit_code == expected_exit_code and any(condition.lower() in stdout.lower() for condition in expected_conditions)
+    return any(condition.lower() not in stdout.lower() for condition in expected_conditions)
 
-def algorithm_does_not_contain(actual: str, expected: str = '') -> bool:
-    return expected.lower() not in actual.lower()
-
+@algorithm_does_not_contain.register
+def _(actual: str, expected: str = '') -> bool:
+    expected_conditions = [cond.strip() for cond in expected.split(';')] 
+    # return expected.lower() not in actual.lower()
+    return any(condition.lower() not in actual.lower() for condition in expected_conditions)
 
 def algorithm_more_than(actual: str, expected: str) -> bool:
     try:
@@ -97,8 +112,6 @@ def algorithm_regex_match(actual: str, expected_pattern: str) -> bool:
 def algorithm_manual(actual: str, expected: str) -> bool:
     return True # This function's result is handled specially in process_with_algorithm
 
-# def algorithm_exact(actual: str, expected: str) -> bool:
-#     return actual.lower() == expected.lower()
 
 
 # The dispatcher maps algorithm names from the CSV to the functions above
@@ -134,15 +147,15 @@ def process_with_algorithm(task: AuditTask) -> str:
             # Get the corresponding step definition from the original parameters
             step_definition = task.parameters.get('steps', [])[i]
             algorithm_name = step_definition.get('algorithm')
-            expected_value = step_definition.get('expected_value', "")
-            
+            expected_string = step_definition.get('expected_value', "")
+            # check to see if there mulit expected condition 
             algorithm_func = ALGORITHM_DISPATCHER.get(algorithm_name)
             step_is_pass = False
 
             # Checking for error so when fail it show error
             error_status = False
             if "ERROR:" not in step_stdout and algorithm_func:
-                step_is_pass = algorithm_func(step_stdout,expected_value)
+                step_is_pass = algorithm_func(step_stdout,expected_string)
                 error_status = False
             else:
                 error_status = True
