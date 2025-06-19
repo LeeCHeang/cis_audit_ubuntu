@@ -112,6 +112,14 @@ def algorithm_regex_match(actual: str, expected_pattern: str) -> bool:
 def algorithm_manual(actual: str, expected: str) -> bool:
     return True # This function's result is handled specially in process_with_algorithm
 
+def string_to_bool(s):
+    s_lower = s.lower()
+    if s_lower == 'true':
+        return True
+    elif s_lower == 'false':
+        return False
+    else:
+        raise ValueError(f"Invalid boolean string: '{s}'")
 
 
 # The dispatcher maps algorithm names from the CSV to the functions above
@@ -126,7 +134,8 @@ ALGORITHM_DISPATCHER = {
     'Regex Match': algorithm_regex_match,
     'Manual': algorithm_manual,
 }
-
+def condition():
+    return 
 def process_with_algorithm(task: AuditTask) -> str:
     # Case 1: The handler returned a structured list for a multi-step check
     if isinstance(task.actual_output, list):
@@ -148,28 +157,56 @@ def process_with_algorithm(task: AuditTask) -> str:
             step_definition = task.parameters.get('steps', [])[i]
             algorithm_name = step_definition.get('algorithm')
             expected_string = step_definition.get('expected_value', "")
+
             # check to see if there mulit expected condition 
             algorithm_func = ALGORITHM_DISPATCHER.get(algorithm_name)
             step_is_pass = False
 
+            # CheckPoint condition for main condition
+            pass_stop_check = string_to_bool(step_definition.get('pass_stop_check', 'False'))
             # Checking for error so when fail it show error
             error_status = False
-            if "ERROR:" not in step_stdout and algorithm_func:
-                step_is_pass = algorithm_func(step_stdout,expected_string)
+            # print(overall_pass)
+            if "ERROR:" not in step_stdout and algorithm_func: 
                 error_status = False
+                step_is_pass = algorithm_func(step_stdout,expected_string)
             else:
                 error_status = True
-            if not step_is_pass:
+            # if not step_is_pass:
+            #     overall_pass = False
+            # sip = True => False and if psc 
+            if not step_is_pass and i == 0 and not pass_stop_check:
                 overall_pass = False
-            
+
+            if not step_is_pass and i > 0 and not pass_stop_check:
+                overall_pass = False
             # Append a structured dictionary for this step
-            breakdown_results.append({
-                "name": step_name,
-                "status": "PASS" if step_is_pass else ( "ERROR" if error_status else "FAIL"),
-                # "status": "PASS" if step_is_pass else "FAIL",
-                "details": step_output
-            })
-            
+            # if pass_stop_check and step_is_pass and i == 0:
+            if pass_stop_check and step_is_pass:
+                overall_pass = True
+                breakdown_results.append({
+                    "name": step_name,
+                    "status": "PASS" if step_is_pass else "ERROR",
+                    "details": step_output
+                })
+                break
+            else: 
+                breakdown_results.append({
+                    "name": step_name,
+                    "status": "PASS" if step_is_pass else ( "ERROR" if error_status else "FAIL"),
+                    # "status": "PASS" if step_is_pass else "FAIL",
+                    "details": step_output
+                })
+
+            # if not step_is_pass:
+            #     overall_pass = False
+
+            # breakdown_results.append({
+            #     "name": step_name,
+            #     "status": "PASS" if step_is_pass else ( "ERROR" if error_status else "FAIL"),
+            #     # "status": "PASS" if step_is_pass else "FAIL",
+            #     "details": step_output
+            # })
         # Return a final dictionary, not a formatted string
         return {
             "overall_status": "PASS" if overall_pass else "FAIL",
