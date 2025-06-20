@@ -1,18 +1,29 @@
 #!/usr/bin/env bash
 # Function to check kernel parameters against a provided list
+## FOR group 3.3
+
 # Usage: kernel_config_parameter.sh <parameter1=value1> <parameter2=value2> .../
 a_parlist=("$@")
 # kernel_config_parameter "$@"
 {
    # Check if the script is sourced or executed directly
-   a_output=(); a_output2=()
+   a_output=(); a_output2=(); l_ipv6_disabled=""
    l_systemdsysctl="$(readlink -f /lib/systemd/systemd-sysctl || readlink -f /usr/lib/systemd/systemd-sysctl)"
    l_ufwscf="$([ -f /etc/default/ufw ] && awk -F= '/^\s*IPT_SYSCTL=/ {print $2}' /etc/default/ufw)"
+   f_ipv6_chk()
+   {
+      l_ipv6_disabled="no"
+      ! grep -Pqs -- '^\h*0\b' /sys/module/ipv6/parameters/disable && l_ipv6_disabled="yes"
+      if sysctl net.ipv6.conf.all.disable_ipv6 | grep -Pqs -- "^\h*net\.ipv6\.conf\.all\.disable_ipv6\h*=\h*1\b" && \
+         sysctl net.ipv6.conf.default.disable_ipv6 | grep -Pqs -- "^\h*net\.ipv6\.conf\.default\.disable_ipv6\h*=\h*1\b"; then
+         l_ipv6_disabled="yes"
+      fi
+   }
    f_kernel_parameter_chk()
    {  
       l_running_parameter_value="$(sysctl "$l_parameter_name" | awk -F= '{print $2}' | xargs)" # Check running configuration
       if grep -Pq -- '\b'"$l_parameter_value"'\b' <<< "$l_running_parameter_value"; then
-         a_output+=(" - \"$l_parameter_name\" is correctly set to \"$l_running_parameter_value\"" \
+         a_output+=(" - \"$l_parameter_name\" is correctly set to \"$l_running_parameter_value\""
          "    in the running configuration")
       else
          a_output2+=(" - \"$l_parameter_name\" is incorrectly set to \"$l_running_parameter_value\"" \
@@ -56,7 +67,16 @@ a_parlist=("$@")
       l_parameter_name="${l_parameter_name// /}"; l_parameter_value="${l_parameter_value// /}"
       l_value_out="${l_parameter_value//-/ through }"; l_value_out="${l_value_out//|/ or }"
       l_value_out="$(tr -d '(){}' <<< "$l_value_out")"
-      f_kernel_parameter_chk
+      if grep -q '^net.ipv6.' <<< "$l_parameter_name"; then
+         [ -z "$l_ipv6_disabled" ] && f_ipv6_chk
+         if [ "$l_ipv6_disabled" = "yes" ]; then
+            a_output+=(" - IPv6 is disabled on the system, \"$l_parameter_name\" is not applicable")
+         else
+            f_kernel_parameter_chk
+         fi
+      else
+         f_kernel_parameter_chk
+      fi
    done < <(printf '%s\n' "${a_parlist[@]}")
    if [ "${#a_output2[@]}" -le 0 ]; then
       printf '%s\n' "" "- Audit Result:" "  ** PASS **" "${a_output[@]}" ""
