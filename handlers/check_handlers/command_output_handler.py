@@ -3,16 +3,17 @@ import subprocess
 def handle(target: str, params: dict) -> str:
     if params is None:
         params = {}
-    
+    print(target)
+    command_to_run = ['/bin/bash', '-c', target]
     try:
         result = subprocess.run(
-            target,
-            shell=True,
+            command_to_run,
+            # shell=True,
             capture_output=True,
             text=True,
             check=False
         )
-
+        print(result)
         # # Get the list of exit codes that are "allowed" to fail from the CSV.
         # # Defaults to an empty list if not provided.
         # # To use "{'allow_error_exit': [1, 2]}"

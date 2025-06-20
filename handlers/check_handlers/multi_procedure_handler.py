@@ -18,7 +18,9 @@ def handle(target: str, params: dict) -> List[Dict]:
             # Case 1: Execute a raw shell command
             if step_type == 'command':
                 command = step.get('command')
-                proc = subprocess.run(command, shell=True, capture_output=True, text=True, check=False)
+                command_to_run = ['/bin/bash', '-c', command]
+                # proc = subprocess.run(command, shell=True, capture_output=True, text=True, check=False)
+                proc = subprocess.run(command_to_run, capture_output=True, text=True, check=False)
                 # if proc.returncode != 0:
                 #     # step_output = f"ERROR: Command exited with code {proc.returncode}. Details: {proc.stderr.strip()}"
                 step_output = {
