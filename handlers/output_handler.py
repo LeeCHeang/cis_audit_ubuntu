@@ -56,7 +56,10 @@ def algorithm_exact(task: AuditTask) -> bool:
 
 @algorithm_exact.register
 def _(actual: str, expected: str) -> bool:
-    return actual.lower() == expected.lower()
+    expected_conditions = [cond.strip() for cond in expected.split(';')]
+    # return actual.lower() == expected.lower()
+
+    return any(condition.lower() == actual.lower() for condition in expected_conditions)
 
 @singledispatch
 def algorithm_contain(task: AuditTask) -> bool:
@@ -73,7 +76,8 @@ def algorithm_contain(task: AuditTask) -> bool:
 @algorithm_contain.register
 def _(actual: str, expected: str) -> bool:
 #     # return print(f"Checking if '{Colors.FAIL}{expected}{Colors.ENDC}' is in '{Colors.OKGREEN}{actual}{Colors.ENDC}'")
-    expected_conditions = [cond.strip() for cond in expected.split(';')] 
+    expected_conditions = [cond.strip() for cond in expected.split(';')]
+    # print(expected_conditions)
 
     # return expected.lower() in actual.lower()
     return any(condition.lower() in actual.lower() for condition in expected_conditions)
