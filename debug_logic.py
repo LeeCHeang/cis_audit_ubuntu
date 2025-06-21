@@ -11,7 +11,6 @@ def main():
     
     parser = argparse.ArgumentParser(description="Run a CIS security audit from a CSV benchmark file.")
     parser.add_argument('benchmark_file', help="The path to the CIS benchmark CSV file.")
-    # --- ADD NEW ARGUMENT ---
     parser.add_argument(
         '--format', 
         choices=['txt', 'csv'], 

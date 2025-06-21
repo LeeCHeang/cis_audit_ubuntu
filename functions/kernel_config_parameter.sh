@@ -3,12 +3,13 @@
 ## FOR group 3.3
 
 # Usage: kernel_config_parameter.sh <parameter1=value1> <parameter2=value2> .../
-a_parlist=("$@")
-# kernel_config_parameter "$@"
+#!/usr/bin/env bash
+
 {
-   # Check if the script is sourced or executed directly
    a_output=(); a_output2=(); l_ipv6_disabled=""
    l_systemdsysctl="$(readlink -f /lib/systemd/systemd-sysctl || readlink -f /usr/lib/systemd/systemd-sysctl)"
+   # a_parlist=("net.ipv4.ip_forward=0" "net.ipv6.conf.all.forwarding=0")
+   a_parlist=("$@")
    l_ufwscf="$([ -f /etc/default/ufw ] && awk -F= '/^\s*IPT_SYSCTL=/ {print $2}' /etc/default/ufw)"
    f_ipv6_chk()
    {

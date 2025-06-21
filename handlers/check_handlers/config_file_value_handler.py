@@ -1,6 +1,6 @@
 import os
-
-def handle(target: str, params: dict) -> str:
+from typing import Dict
+def handle(target: str, params: dict) -> Dict[str,any]:
     key_to_find = params.get('key')
     # pass_if_missing_val = params.get('pass_if_missing')
     if not os.path.exists(target):
@@ -51,7 +51,11 @@ def handle(target: str, params: dict) -> str:
         }
         
     except Exception as e:
-        return f"ERROR: Failed to read file '{target}'. Reason: {e}"
+        return { 
+            'stdout': "",
+            'stderr': f"ERROR: Failed to read file '{target}'. Reason: {e}",
+            "exit_code": 2
+        }
 
 # if __name__ == "__main__":
 #     result = handle('/etc/some_config

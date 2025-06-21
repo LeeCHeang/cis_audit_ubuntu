@@ -19,8 +19,13 @@ def handle(target: str, params: dict) -> str:
             "exit_code": result.returncode
         }
 
-    except FileNotFoundError:
-        return "ERROR: dpkg-query not found."
+    except FileNotFoundError as e:
+        # return "ERROR: dpkg-query not found."
+        return { 
+                'stdout':"",
+                'stderr':"ERROR: dpkg-query not found. {e}",
+                'exit_code': 1,
+        }
 
     except Exception as e:
         return {"stdout": "", "stderr": f"ERROR: Command failed to execute. Reason: {e}", "exit_code": 127}

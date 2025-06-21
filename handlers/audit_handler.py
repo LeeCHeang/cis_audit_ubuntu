@@ -35,7 +35,6 @@ class AuditHandler:
                 # If we are in DEBUG mode, try to find a function named 'debug' first.
                 if log_level == 'DEBUG':
                     execute_func = getattr(handler_module, 'debug', None)
-                
                 # If we're not in debug mode, or if a 'debug' function wasn't found,
                 # fall back to the standard 'handle' function.
                 if not execute_func:
@@ -48,9 +47,17 @@ class AuditHandler:
                 # else:
                     # Otherwise, we call all other handlers normally with two arguments.
                     raw_value = execute_func(task.target, task.parameters)
-
                 task.actual_output = raw_value
                 # print(raw_value)
+                # if isinstance(raw_value, dict) and 'stdout' in raw_value:
+                #     task.actual_output = raw_value['stdout']  # Extract just the stdout
+                # else:
+                #     task.actual_output = raw_value  
+                # print(f"DEBUG: Before process_with_algorithm:")
+                # print(f"  task.actual_output = {task.actual_output}")
+                # print(f"  task.actual_output type = {type(task.actual_output)}")
+                # print(f"  task.parameters = {task.parameters}")
+                # print(f"  task.parameters type = {type(task.parameters)}")
                 task.final_result = process_with_algorithm(task)
 
             except ImportError:
