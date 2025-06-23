@@ -1,6 +1,6 @@
 import csv
 import os
-import json
+import ast
 from audit_task import AuditTask
 from typing import List, Union, Dict
 
@@ -15,23 +15,29 @@ class CISBenchmarkParser:
         tasks = []
         try:
             with open(self.csv_file_path, 'r', encoding='utf-8') as csvfile:
-                # Use csv.reader and skip header to avoid case sensitivity issues
                 reader = csv.reader(csvfile)
-                header = [h.strip() for h in next(reader)] # Read header row
+                header = [h.strip() for h in next(reader)] 
 
-                for row in reader:
+                for row_num, row in enumerate(reader, 2): # Start from row 2 for better error messages
                     row_dict = dict(zip(header, row))
+                    
                     profile_str = row_dict.get('Profile', 'All')
                     profiles = [p.strip() for p in profile_str.split(',')]
-                    params_str = row_dict.get('Parameters', '{}')
+                    
+                    params_str = row_dict.get('Parameters', '')
                     params: Union[Dict, List] = {}
-                    try:
-                        params = json.loads(params_str.replace("'", '"')) if params_str else {}
-                    except json.JSONDecodeError:
-                        params = {"error": "Malformed JSON in Parameters column"}
 
-                    # The AuditTask object is created using only the fields that
-                    # actually exist in the class definition.
+                    if params_str:
+                        try:
+                            evaluated_params = ast.literal_eval(params_str)
+                            if isinstance(evaluated_params, (dict, list)):
+                                params = evaluated_params
+                            else:
+                                params = {"error": f"Parameters on row {row_num} is not a valid dictionary or list."}
+                        except (ValueError, SyntaxError) as e:
+                            # params = {"error": f"Malformed parameters string on row {row_num}: {e}", "original_value": params_str}
+                            params = {"error": f"Malformed parameters string on row {row_num}: {e}", "original_value": params_str}
+
                     task = AuditTask(
                         id=row_dict.get('ID', ''),
                         level=row_dict.get('Level','N/A'),

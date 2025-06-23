@@ -13,7 +13,6 @@ def handle(target: str, params: dict) -> List[Dict]:
         step_name = step.get('name', 'Unnamed Step')
         step_type = step.get('type', 'command')
         step_output = ""
-
         try:
             # Case 1: Execute a raw shell command
             if step_type == 'command':
