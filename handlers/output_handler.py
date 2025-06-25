@@ -74,6 +74,7 @@ def algorithm_contain(task: AuditTask) -> bool:
 @algorithm_contain.register
 def _(actual: str, expected: str) -> bool:
     expected_conditions = [cond.strip() for cond in expected.split(';')]
+    print("expected: "+ condition.lower().split() in actual.lower().split() for condition in expected_conditions)
     return any(condition.lower().split() in actual.lower().split() for condition in expected_conditions)
 
 @singledispatch
