@@ -69,12 +69,12 @@ def _(actual: str, expected: str) -> bool:
 def algorithm_contain(task: AuditTask) -> bool:
     """Passes if the command exits with the expected success code and output contains a substring."""
     stdout, exit_code, expected_exit_code, expected_conditions= _get_common_data(task)
-    return exit_code == expected_exit_code and any(condition.lower() in stdout.lower() for condition in expected_conditions)
+    return exit_code == expected_exit_code and any(condition.lower().split() in stdout.lower().split() for condition in expected_conditions)
 
 @algorithm_contain.register
 def _(actual: str, expected: str) -> bool:
     expected_conditions = [cond.strip() for cond in expected.split(';')]
-    return any(condition.lower() in actual.lower() for condition in expected_conditions)
+    return any(condition.lower().split() in actual.lower().split() for condition in expected_conditions)
 
 @singledispatch
 def algorithm_does_not_contain(task: AuditTask) -> bool:

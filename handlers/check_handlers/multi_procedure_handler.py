@@ -2,7 +2,9 @@ import importlib
 import os
 import subprocess
 from typing import List, Dict
+from utils.decorators import debug_wrapper # <-- Import our new decorator
 
+@debug_wrapper # <-- Apply the decorator to the handle function
 def handle(target: str, params: dict) -> List[Dict]:
     steps = params.get('steps')
     if not isinstance(steps, list):
