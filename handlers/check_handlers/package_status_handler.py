@@ -1,8 +1,8 @@
 import subprocess
 
-# from utils.decorators import debug_wrapper # <-- Import our new decorator
+from utils.decorators import debug_wrapper # <-- Import our new decorator
 
-# @debug_wrapper # <-- Apply the decorator to the handle function
+@debug_wrapper # <-- Apply the decorator to the handle function
 def handle(target: str, params: dict) -> str:
     if not target:
         return {

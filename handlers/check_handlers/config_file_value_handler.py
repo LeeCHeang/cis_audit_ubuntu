@@ -56,15 +56,3 @@ def handle(target: str, params: dict) -> Dict[str,any]:
             'stderr': f"ERROR: Failed to read file '{target}'. Reason: {e}",
             "exit_code": 2
         }
-
-# if __name__ == "__main__":
-#     result = handle('/etc/some_config
-#     .conf', {'key': 'some_setting'})
-#     print(result)  # Outputs the value or an error message
-# Note: This function assumes the config file is in a standard format
-# where each line is either a comment, empty, or a key-value pair.
-# It does not handle complex formats like JSON or YAML.
-# This is a simple key-value parser for standard config files.
-# debug = handle("/etc/passwd", {"key": "root"})
-# print(debug)  # This will print the value of 'root' or an error message if the key is not found.
-# This is a simple key-value parser for standard config files.

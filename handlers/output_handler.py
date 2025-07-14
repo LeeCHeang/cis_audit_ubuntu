@@ -1,212 +1,155 @@
+# In cis_auditor_v3/handlers/output_handler.py
 import re
-import logging  # <-- ADD THIS IMPORT
+import logging
 from audit_task import AuditTask
 from functools import singledispatch
+from typing import Tuple
 
 class Colors:
     OKGREEN = '\033[92m'
-    WARNING = '\033[93m' # Yellow
-    FAIL = '\03g[91m' # Red
-    ENDC = '\033[0m' # Resets the color
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
     BOLD = '\033[1m'
 
 def _get_common_data(task: AuditTask):
-    """Helper function to extract data needed by all algorithms."""
-    # logger = logging.getLogger()
-
-    # Defensively check if actual_output is a dictionary before using it.
     if not isinstance(task.actual_output, dict):
-        # logger.error(f"CRITICAL ERROR in _get_common_data for check {task.id}: task.actual_output was type {type(task.actual_output)}, not dict.")
-        # Return values that will cause a clean failure.
         return "", -1, 0, []
-
     output_dict = task.actual_output
     stdout = output_dict.get("stdout", "")
     exit_code = output_dict.get("exit_code", -1)
-    
-    expected_exit_code = 0  # Default to 0
-    
-    # Log the type to see what's happening, then check if it's a dictionary before calling .get()
-    # logger.debug(f"For check {task.id}, task.parameters is of type: {type(task.parameters)}")
-    if isinstance(task.parameters, dict):
-        expected_exit_code = int(task.parameters.get("success_code", 0))
-    
-    expected_conditions = [cond.strip() for cond in task.expected_value.split(';')] 
+    expected_exit_code = int(task.parameters.get("success_code", 0)) if isinstance(task.parameters, dict) else 0
+    expected_conditions = [cond.strip() for cond in task.expected_value.split(';')] if task.expected_value else []
     return stdout, exit_code, expected_exit_code, expected_conditions
 
-@singledispatch
-def algorithm_null(task: AuditTask) -> bool:
-    """Passes if the command exits with the expected success code and has no output."""
-    stdout, exit_code, expected_exit_code, expected_conditions = _get_common_data(task)
-    return not bool(stdout)
-# overload
-@algorithm_null.register
-def _(actual: str, expected: str ) -> bool:
-    return not bool(actual)
-
-@singledispatch
-def algorithm_not_null(task: AuditTask) -> bool:
-    """Passes if the command exits with the expected success code and has output."""
-    stdout, exit_code, expected_exit_code, expected_conditions = _get_common_data(task)
-    return bool(stdout)
-# overload
-@algorithm_not_null.register
-def _(actual: str, expected: str = '' ) -> bool:
-    return bool(actual)
-
-@singledispatch
 def algorithm_exact(task: AuditTask) -> bool:
-    """Passes if the command exits with the expected success code and output matches exactly."""
     stdout, exit_code, expected_exit_code, expected_conditions = _get_common_data(task)
-    return exit_code == expected_exit_code and any(condition.lower().split() == stdout.lower().split() for condition in expected_conditions)
+    return exit_code == expected_exit_code and any(condition.lower().strip() == stdout.lower().strip() for condition in expected_conditions)
 
-@algorithm_exact.register
-def _(actual: str, expected: str) -> bool:
-    expected_conditions = [cond.strip() for cond in expected.split(';')]
-    return any(condition.lower().split() == actual.lower().split() for condition in expected_conditions)
+def algorithm_null(task: AuditTask) -> bool:
+    stdout, exit_code, expected_exit_code, _ = _get_common_data(task)
+    return not bool(stdout)
 
-@singledispatch
+def algorithm_not_null(task: AuditTask) -> bool:
+    stdout, exit_code, expected_exit_code, _ = _get_common_data(task)
+    return bool(stdout)
+
 def algorithm_contain(task: AuditTask) -> bool:
-    """Passes if the command exits with the expected success code and output contains a substring."""
-    stdout, exit_code, expected_exit_code, expected_conditions= _get_common_data(task)
-    return exit_code == expected_exit_code and any(condition.lower() in stdout.lower() for condition in expected_conditions)
+    stdout, exit_code, expected_exit_code, expected_conditions = _get_common_data(task)
+    # Normalize whitespace for better matching
+    normalized_stdout = ' '.join(stdout.lower().split())
+    # print(f"Normalized stdout: {normalized_stdout}")  # Debugging output
+    # print(f"Expected conditions: {expected_conditions}")  # Debugging output
+    for condition in expected_conditions:
+        normalized_condition = ' '.join(condition.lower().split())
+        if normalized_condition not in normalized_stdout:
+            return False
+    return True  # All conditions must be present
 
-@algorithm_contain.register
-def _(actual: str, expected: str) -> bool:
-    expected_conditions = [cond.strip() for cond in expected.split(';')]
-    return any(condition.lower() in actual.lower() for condition in expected_conditions)
+# def algorithm_contain_all_lines(task: AuditTask) -> bool:
+#     stdout, exit_code, expected_exit_code, expected_conditions = _get_common_data(task)
+#     stdout_lines = [line.strip().lower() for line in stdout.split('\n') if line.strip()]
+    
+#     for condition in expected_conditions:
+#         condition_lines = [line.strip().lower() for line in condition.split('\n') if line.strip()]
+#         for expected_line in condition_lines:
+#             if not any(expected_line in stdout_line for stdout_line in stdout_lines):
+#                 return False
+#     return True
 
-@singledispatch
 def algorithm_does_not_contain(task: AuditTask) -> bool:
-    """Passes if the command exits with the expected success code and output contains a substring."""
-    stdout, exit_code, expected_exit_code, expected_conditions= _get_common_data(task)
-    return any(condition.lower() not in stdout.lower() for condition in expected_conditions)
-
-@algorithm_does_not_contain.register
-def _(actual: str, expected: str = '') -> bool:
-    expected_conditions = [cond.strip() for cond in expected.split(';')] 
-    return any(condition.lower() not in actual.lower() for condition in expected_conditions)
-
-def algorithm_more_than(actual: str, expected: str) -> bool:
-    try:
-        return float(actual) > float(expected)
-    except (ValueError, TypeError):
-        return False # Cannot compare non-numeric values
-
-def algorithm_less_than(actual: str, expected: str) -> bool:
-    try:
-        return float(actual) < float(expected)
-    except (ValueError, TypeError):
-        return False # Cannot compare non-numeric values
-
-def algorithm_regex_match(actual: str, expected_pattern: str) -> bool:
-    try:
-        return bool(re.search(expected_pattern, actual, re.MULTILINE))
-    except re.error:
-        return False # Invalid regex pattern
-
-def algorithm_manual(actual: str, expected: str) -> bool:
-    return True # This function's result is handled specially in process_with_algorithm
-
-def string_to_bool(s):
-    s_lower = s.lower()
-    if s_lower == 'true':
-        return True
-    elif s_lower == 'false':
-        return False
-    else:
-        raise ValueError(f"Invalid boolean string: '{s}'")
+    stdout, exit_code, expected_exit_code, expected_conditions = _get_common_data(task)
+    # return all(condition.lower() not in stdout.lower() for condition in expected_conditions)
+    normalized_stdout = ' '.join(stdout.lower().split())
+    # print(f"Normalized stdout: {normalized_stdout}")  # Debugging output
+    # print(f"Expected conditions: {expected_conditions}")  # Debugging output
+    for condition in expected_conditions:
+        normalized_condition = ' '.join(condition.lower().split())
+        if normalized_condition in normalized_stdout:
+            return False
+    return True  # All conditions must be present
 
 
-# The dispatcher maps algorithm names from the CSV to the functions above
 ALGORITHM_DISPATCHER = {
     'Exact': algorithm_exact,
     'Contain': algorithm_contain,
+    # new algorithms but have not been tested yet
+    # 'Contain All Lines': algorithm_contain_all_lines,
     'Does Not Contain': algorithm_does_not_contain,
     'Null': algorithm_null,
     'Not Null': algorithm_not_null,
-    'More Than': algorithm_more_than,
-    'Less Than': algorithm_less_than,
-    'Regex Match': algorithm_regex_match,
-    'Manual': algorithm_manual,
 }
-def condition():
-    return 
-    
-def process_with_algorithm(task: AuditTask) -> str:
-    # Case 1: The handler returned a structured list for a multi-step check
-    if isinstance(task.actual_output, list):
-        # A multi-procedure check logically requires a dictionary of parameters.
-        if not isinstance(task.parameters, dict):
-            return "ERROR: Multi-procedure check requires dictionary parameters, but received a list."
-            
-        step_definitions = task.parameters.get('steps')
-        step_results = task.actual_output
-        if not isinstance(step_definitions, list) or len(step_definitions) != len(step_results):
-            return "ERROR: Malformed or missing 'steps' definition in CSV Parameters for this multi_procedure check."
-        
-        breakdown_results = []
-        overall_pass = True
 
-        for i, step_result in enumerate(task.actual_output):
-            step_name = step_result.get('name', f"Step {i+1}")
-            step_output = step_result.get('output', '')
-            step_stdout = step_output.get('stdout','')
-            step_definition = task.parameters.get('steps', [])[i]
-            algorithm_name = step_definition.get('algorithm')
-            expected_string = step_definition.get('expected_value', "")
-            algorithm_func = ALGORITHM_DISPATCHER.get(algorithm_name)
-            step_is_pass = False
-            pass_stop_check = string_to_bool(step_definition.get('pass_stop_check', 'False'))
-            error_status = False
 
-            if "ERROR:" not in step_stdout and algorithm_func: 
-                error_status = False
-                step_is_pass = algorithm_func(step_stdout,expected_string)
-            else:
-                error_status = True
+def _judge_simple_check(task: AuditTask) -> dict:
+    status_str = "FAIL"  # Default status
+    reason_str = "Condition not met." # Default reason
+    raw_output = task.actual_output
+    error_str = raw_output.get('stderr', "Unknown Error output. Cuz output is empty")
 
-            if not step_is_pass and i == 0 and not pass_stop_check:
-                overall_pass = False
-
-            if not step_is_pass and i > 0 and not pass_stop_check:
-                overall_pass = False
-
-            if pass_stop_check and step_is_pass:
-                overall_pass = True
-                breakdown_results.append({
-                    "name": step_name,
-                    "status": "PASS" if step_is_pass else "ERROR",
-                    "details": step_output
-                })
-                break
-            else: 
-                breakdown_results.append({
-                    "name": step_name,
-                    "status": "PASS" if step_is_pass else ( "ERROR" if error_status else "FAIL"),
-                    "details": step_output
-                })
-        return {
-            "overall_status": "PASS" if overall_pass else "FAIL",
-            "breakdown": breakdown_results
-        }
-
-    # Case 2: The handler returned a simple string (original behavior)
+    if not isinstance(raw_output, dict) or "exit_code" not in raw_output:
+        status_str = "ERROR"
+        error_str = raw_output.get('stderr')
+        reason_str = "Malformed evidence from handler. Expected dict with 'exit_code'."
+    elif raw_output.get("exit_code") == 127:
+        status_str = "ERROR"
+        reason_str = f"Command not found. Stderr: {raw_output.get('stderr')}"
     else:
-        """Judges a task's result using the specified algorithm."""
         algorithm_func = ALGORITHM_DISPATCHER.get(task.algorithm)
-        
-        if "ERROR:" in str(task.actual_output):
-            return f"ERROR"
         if not algorithm_func:
-            return f"ERROR: Unknown algorithm '{task.algorithm}'"
-            
-        if task.algorithm == 'Manual':
-            return "MANUAL"
-
-        is_pass = algorithm_func(task)
-        
-        if is_pass:
-            return "PASS"
+            status_str = "ERROR"
+            reason_str = f"Unknown algorithm specified: '{task.algorithm}'"
         else:
-            return "FAIL"
+            if algorithm_func(task):
+                status_str = "PASS"
+                # reason_str = "Check passed successfully."
+                reason_str = f"Check passed successfully for algorithm '{task.algorithm}' with expected value '{task.expected_value}'."
+            else:
+                status_str = "FAIL"
+                reason_str = f"Check failed for algorithm '{task.algorithm}' with expected value '{task.expected_value}'."
+    
+    return {
+        "type": "action_node",
+        "title": task.title,
+        "overall_status": status_str, # Guaranteed to be a string
+        "details": {"reason": reason_str,"error":error_str, "evidence": raw_output}
+    }
+
+def _judge_evidence_tree_recursive(node: dict) -> dict:
+    if "logic" in node:
+        logic = node.get("logic", "AND").upper()
+        is_passed, has_error = (logic == "AND"), False
+        child_results = []
+        for sub_node in node.get("steps", []):
+            sub_result_obj = _judge_evidence_tree_recursive(sub_node)
+            child_results.append(sub_result_obj)
+            sub_verdict = sub_result_obj.get("overall_status")
+            if sub_verdict == "ERROR": has_error = True
+            if sub_verdict == "PASS" and str(sub_node.get('pass_stop_check', 'false')).lower() == 'true':
+                is_passed = True; break
+            if logic == "AND" and sub_verdict != "PASS": is_passed = False
+            if logic == "OR" and sub_verdict == "PASS": is_passed = True; break
+        final_status = "ERROR" if has_error else ("PASS" if is_passed else "FAIL")
+        return {"type": "logic_node", "logic": logic, "overall_status": final_status, "steps_results": child_results}
+    else:
+        sub_task = AuditTask(
+            algorithm=node.get('algorithm'), expected_value=node.get('expected_value'),
+            actual_output=node.get('raw_evidence'), parameters=node.get('params'),
+            title=node.get('title', 'Untitled Step'),
+            id='', level='', profile=[], domain='', check_type='', target=''
+        )
+        return _judge_simple_check(sub_task)
+
+def process_with_algorithm(task: AuditTask) -> dict:
+    if isinstance(task.actual_output, dict) and "error" in task.actual_output:
+        return {"overall_status": "ERROR", "type": "action_node", "title": task.title, "details": task.actual_output}
+    if isinstance(task.actual_output, dict) and task.actual_output.get("is_unified_logic_payload"):
+        payload = task.actual_output
+        evidence_tree = payload.get("evidence_tree", [])
+        top_level_logic = payload.get("logic", "AND")
+        if not top_level_logic: top_level_logic = "AND"
+        if not evidence_tree: return {"overall_status": "ERROR", "type": "action_node", "title": task.title, "details": "Logic tree empty."}
+        root_node = {"logic": top_level_logic, "steps": evidence_tree}
+        return _judge_evidence_tree_recursive(root_node)
+    else:
+        return _judge_simple_check(task)

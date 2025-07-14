@@ -15,14 +15,16 @@ class ColorFormatter(logging.Formatter):
     CYAN = "\x1b[36;20m"
     RESET = "\x1b[0m"
     BOLD_LBLUE = '\033[94m\033[1m'
-    
+    RED_BG = "\x1b[41;1;37m"
+
     # The color codes now wrap ONLY the '%(levelname)s' part.
     # Assign a color to each log level
     FORMATS = {
         logging.DEBUG: f"{GREEN}%(asctime)s {BOLD_RED}|{RESET} {YELLOW}%(levelname)s{RESET} {BOLD_RED}|{RESET} %(message)s",
         logging.INFO: f"{GREEN}%(asctime)s {BOLD_RED}|{RESET} {BOLD_LBLUE}%(levelname)s{RESET} {BOLD_RED}|{RESET} %(message)s",
         logging.WARNING: f"{GREEN}%(asctime)s {BOLD_RED}|{RESET} {ORANGE}%(levelname)s{RESET} {BOLD_RED}|{RESET} %(message)s", # Orange is also good for warnings
-        logging.ERROR: f"{GREEN}%(asctime)s {BOLD_RED}|{RESET} {RED}%(levelname)s{RESET} {BOLD_RED}|{RESET} %(message)s",
+        # logging.ERROR: f"{GREEN}%(asctime)s {BOLD_RED}|{RESET} {RED}%(levelname)s{RESET} {BOLD_RED}|{RESET} %(message)s",
+        logging.ERROR: f"{GREEN}%(asctime)s {BOLD_RED}|{RESET}{RED_BG} %(levelname)s {RESET}{BOLD_RED}|{RESET} %(message)s",
         logging.CRITICAL: f"{GREEN}%(asctime)s {BOLD_RED}|{RESET} {BOLD_RED}%(levelname)s{RESET} {BOLD_RED}|{RESET} %(message)s",
     }
 

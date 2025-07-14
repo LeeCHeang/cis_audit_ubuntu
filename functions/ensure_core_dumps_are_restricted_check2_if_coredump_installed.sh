@@ -7,7 +7,7 @@
     storage=$(grep -Psi -- '^\s*Storage\s*=\s*none\s*$' /etc/systemd/coredump.conf)
     processSize=$(grep -Psi -- '^\s*ProcessSizeMax\s*=\s*0' /etc/systemd/coredump.conf)
     
-    # For testing with your test file (comment out the lines above and uncomment these):
+    # For testing with test file (comment out the lines above and uncomment these):
     # storage=$(grep -Psi -- '^\s*Storage\s*=\s*none\s*$' ~/Documents/grep.txt)
     # processSize=$(grep -Psi -- '^\s*ProcessSizeMax\s*=\s*0' ~/Documents/grep.txt)
     

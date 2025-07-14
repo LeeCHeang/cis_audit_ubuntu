@@ -1,7 +1,12 @@
+# In utils/decorators.py
 import logging
 from functools import wraps
 
 def debug_wrapper(func):
+    """
+    A decorator that logs detailed information about a handler's execution
+    only when the application's logging level is set to DEBUG.
+    """
     @wraps(func)
     def wrapper(*args, **kwargs):
         logger = logging.getLogger()

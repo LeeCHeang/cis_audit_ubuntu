@@ -1,96 +1,61 @@
 import importlib
-import os
-import subprocess
-from typing import List, Dict
-from utils.decorators import debug_wrapper # <-- Import our new decorator
+import logging
 
-@debug_wrapper # <-- Apply the decorator to the handle function
-def handle(target: str, params: dict) -> List[Dict]:
-    steps = params.get('steps')
-    if not isinstance(steps, list):
-        return [{'name': 'Handler Error', 'output': "ERROR: 'steps' parameter must be a list."}]
+from utils.decorators import debug_wrapper
 
-    results = []
-    for step in steps:
-        step_name = step.get('name', 'Unnamed Step')
-        step_type = step.get('type', 'command')
-        step_output = ""
-        try:
-            # Case 1: Execute a raw shell command
-            if step_type == 'command':
-                command = step.get('command')
-                command_to_run = ['/bin/bash', '-c', command]
-                # proc = subprocess.run(command, shell=True, capture_output=True, text=True, check=False)
-                proc = subprocess.run(command_to_run, capture_output=True, text=True, check=False)
-                # if proc.returncode != 0:
-                #     # step_output = f"ERROR: Command exited with code {proc.returncode}. Details: {proc.stderr.strip()}"
-                step_output = {
-                    "stdout": proc.stdout.strip(),
-                    "stderr": proc.stderr.strip(),
-                    "exit_code": proc.returncode
-                }
-            # else:
-                #     # step_output = proc.stdout.strip() if proc.stdout.strip() else "__EMPTY_OUTPUT__"
-                #     step_output = {
-                #         "stdout": proc.stdout.strip(),
-                #         "stderr": proc.stderr.strip(),
-                #         "exit_code": proc.returncode
-                #     }
+def _get_sub_handler_func(handler_name):
+    try:
+        if not handler_name: return None
+        module_name = f"handlers.check_handlers.{handler_name}_handler"
+        module = importlib.import_module(module_name)
+        return getattr(module, 'handle')
+    except (ImportError, AttributeError) as e:
+        logging.error(f"Could not load sub-handler for '{handler_name}': {e}")
+        return None
+
+def _collect_evidence_recursive(steps_array):
+    evidence_tree = []
+    for node in steps_array:
+        if "logic" in node:
+            processed_steps, error = _collect_evidence_recursive(node.get("steps", []))
+            if error:
+                return None, error
+            evidence_tree.append({"logic": node["logic"], "steps": processed_steps})
+        else:
+            action_node = node.copy()
+            sub_handler_name = action_node.get('type_handler')
             
-            # Case 2: Execute a script from the functions/ directory
-            elif step_type == 'script':
-                script_name = step.get('target_script')
-                script_path = os.path.abspath(f"functions/{script_name}")
-                if not os.path.exists(script_path):
-                    # step_output = f"ERROR: Script file '{script_name}' not found."
-                    step_output= {
-                        "stdout": '',
-                        "stderr": f"Script file '{script_name}' not found.",
-                        "exit_code": proc.returncode
-                    }
-                else:
-                    script_args = step.get('script_params', [])
-                    proc = subprocess.run(['bash', script_path] + script_args, capture_output=True, text=True, check=False)
-                    if proc.returncode != 0:
-                        # step_output = f"ERROR: Script exited with code {proc.returncode}. Details: {proc.stderr.strip()}"
-                        step_output= {
-                            "stdout": '',
-                            "stderr": proc.stderr.strip(),
-                            "exit_code": proc.returncode
-                        }
-                    else:
-                        # step_output = proc.stdout.strip() if proc.stdout.strip() else "__EMPTY_OUTPUT__"
-                        step_output= {
-                            "stdout": proc.stdout.strip(),
-                            "stderr": proc.stderr.strip(),
-                            "exit_code": proc.returncode
-                        }
+            if not sub_handler_name:
+                step_title = action_node.get('title', 'Untitled Step')
+                error_message = f"Configuration Error: Missing 'type_handler' key in step titled: '{step_title}'"
+                return None, {"error": error_message}
 
-            # Case 3: Call another Python handler
-            # this feature should not work on because we need to call the audit_handler inside here which is not good 
-            elif step_type == 'handler':
-                target_handler_name = step.get('target_handler')
-                
-                target_handler_module_name = f"handlers.check_handlers.{target_handler_name}_handler"
+            sub_handle_func = _get_sub_handler_func(sub_handler_name)
+            if not sub_handle_func:
+                step_title = action_node.get('title', 'Untitled Step')
+                error_message = f"Configuration Error: The specified 'type_handler' ('{sub_handler_name}') does not exist for step: '{step_title}'"
+                return None, {"error": error_message}
 
-                # just import the module lib to here
-                target_handler_module = importlib.import_module(target_handler_module_name)
-
-                if not target_handler_module:
-                    step_output = f"ERROR: Target handler '{target_handler_name}' not found in dispatcher."
-                else:
-                    handler_params = step.get('handler_params', {})
-                    h_target = handler_params.get('target', '')
-                    h_params = handler_params.get('params', {})
-                    # Call the other handler function
-                    sub_execute_func = getattr(target_handler_module, 'handle')
-                    step_output = sub_execute_func(h_target, h_params)
-            else:
-                step_output = f"ERROR: Unknown step type '{step_type}'."
+            try:
+                raw_evidence = sub_handle_func(action_node.get('target'), action_node.get('parameters'))
+            except Exception as e:
+                raw_evidence = {"stderr": f"Exception during execution of '{sub_handler_name}': {e}", "exit_code": -1}
             
-            results.append({'name': step_name, 'output': step_output})
+            action_node['raw_evidence'] = raw_evidence
+            evidence_tree.append(action_node)
 
-        except Exception as e:
-            results.append({'name': step_name, 'output': f"ERROR: An unexpected exception occurred: {e}"})
-            
-    return results
+    return evidence_tree, None
+@debug_wrapper
+def handle(target: str, params: dict) -> dict:
+    if not isinstance(params, dict) or "steps" not in params:
+        return {"error": "Parameters for multi_procedure must contain a 'steps' array."}
+    
+    evidence_tree, error = _collect_evidence_recursive(params.get("steps", []))
+    if error:
+        return error
+
+    return {
+        "is_unified_logic_payload": True,
+        "logic": params.get("logic"),
+        "evidence_tree": evidence_tree
+    }

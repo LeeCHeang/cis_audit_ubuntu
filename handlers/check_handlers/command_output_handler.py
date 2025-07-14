@@ -1,5 +1,9 @@
 import subprocess
 from typing import Dict
+
+from utils.decorators import debug_wrapper
+
+@debug_wrapper
 def handle(target: str, params: dict) -> Dict[str,any]:
     if params is None:
         params = {}
